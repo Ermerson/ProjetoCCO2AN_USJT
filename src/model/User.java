@@ -8,7 +8,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 
 public class User {
-	//[M.U-0001]
+	// [M.U-0001]
 	private int idUser;
 	private String username;
 	private String password;
@@ -17,12 +17,13 @@ public class User {
 	private boolean accountActive;
 	private String codeVerification;
 	private String emailRecovery;
-	
-	//[M.U-0002]
-	public User(){
-		
+
+	// [M.U-0002]
+	public User() {
+
 	}
-	//[M.U-0003]
+
+	// [M.U-0003]
 	public User(int idUser, String username, String password, Timestamp dateCreate, Timestamp dateUpdate,
 			boolean accountActive, String codeVerification, String emailRecovery) {
 		this.idUser = idUser;
@@ -34,8 +35,8 @@ public class User {
 		this.codeVerification = codeVerification;
 		this.emailRecovery = emailRecovery;
 	}
-	
-	//[M.U-0004]
+
+	// [M.U-0004]
 	public int getIdUser() {
 		return idUser;
 	}
@@ -100,7 +101,7 @@ public class User {
 		this.emailRecovery = emailRecovery;
 	}
 
-	//[M.U-0005]
+	// [M.U-0005]
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -115,7 +116,8 @@ public class User {
 		result = prime * result + ((username == null) ? 0 : username.hashCode());
 		return result;
 	}
-	//[M.U-0006]
+
+	// [M.U-0006]
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)
@@ -162,59 +164,115 @@ public class User {
 		return true;
 	}
 
-	//[M.U-0007]
+	// [M.U-0007]
 	@Override
 	public String toString() {
 		return "User [idUser=" + idUser + ", username=" + username + ", password=" + password + ", dateCreate="
 				+ dateCreate + ", dateUpdate=" + dateUpdate + ", accountActive=" + accountActive + ", codeVerification="
 				+ codeVerification + ", emailRecovery=" + emailRecovery + "]";
 	}
-	
-	
-	
-	static{
-		try{
+
+	static {
+		try {
 			Class.forName("com.mysql.jdbc.Driver");
-		}catch(ClassNotFoundException e){
+		} catch (ClassNotFoundException e) {
 			throw new RuntimeException();
 		}
 	}
-	
-	public Connection getConnection() throws SQLException{
-		return DriverManager.getConnection("jdbc:mysql://localhost/voluntariis?user=root&password=root");
+
+	public Connection getConnection() throws SQLException {
+		return DriverManager.getConnection("jdbc:mysql://localhost/voluntariis?user=root&password=root&useSSL=true");
 	}
-	
-	
-	
-	
-	public void insertUser(){
+
+	public void insertUser() {
 		String sqlInsert = "INSERT INTO USERS(usernme, passwrd, dateCreate, dateUpdate, accountActive, codeVerification, emailRecovery)"
 				+ "VALUES( ?, MD5(?), NOW(), NOW(), 0, MD5(?), ? )";
-		
-		try (Connection conn = getConnection();
-				PreparedStatement stm = conn.prepareStatement(sqlInsert);){
-			
+
+		try (Connection conn = getConnection(); 
+				PreparedStatement stm = conn.prepareStatement(sqlInsert);) {
+
 			stm.setString(1, getUsername());
 			stm.setString(2, getPassword());
-			stm.setString(3, (""+getUsername().hashCode()));
+			stm.setString(3, (Integer.toString(getEmailRecovery().hashCode() + getUsername().hashCode())));
 			stm.setString(4, getEmailRecovery());
 			stm.execute();
-			
-			String sqlQuery =  "SELECT LAST_INSERT_ID()";
-			try(PreparedStatement stm2 = conn.prepareStatement(sqlQuery);
-					ResultSet rs = stm2.executeQuery();){	
-				if(rs.next()){
+
+			String sqlQuery = "SELECT LAST_INSERT_ID()";
+			try (PreparedStatement stm2 = conn.prepareStatement(sqlQuery); 
+					ResultSet rs = stm2.executeQuery();) {
+				if (rs.next()) {
 					setIdUser(rs.getInt(1));
 				}
-			}catch(SQLException e1){
+			} catch (SQLException e1) {
 				e1.printStackTrace();
 			}
-		}catch(SQLException e){
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void selectUser() {
+		String sqlSelect = "SELECT * FROM USERS WHERE usernme = ? AND passwrd = MD5(?)";
+		// usernme, passwrd, dateCreate, dateUpdate, accountActive, codeVerification, emailRecovery
+		try (Connection conn = getConnection(); PreparedStatement stm = conn.prepareStatement(sqlSelect);) {
+			stm.setString(1, getUsername());
+			stm.setString(2, getPassword());
+			try (ResultSet rs = stm.executeQuery();) {
+				if (rs.next()) {
+					
+					setIdUser(rs.getInt("idUser"));
+					setUsername(rs.getString("usernme"));
+					setPassword(rs.getString("passwrd"));
+					setDateCreate(rs.getTimestamp("dateCreate"));
+					setDateUpdate(rs.getTimestamp("dateUpdate"));
+					setAccountActive(rs.getBoolean("accountActive"));
+					setCodeVerification(rs.getString("codeVerification"));
+					setEmailRecovery(rs.getString("emailrecovery"));
+					
+				}else{
+					setIdUser(-1);
+					setUsername(null);
+					setPassword(null);
+					setDateCreate(null);
+					setDateUpdate(null);
+					setAccountActive(false);
+					setCodeVerification(null);
+					setEmailRecovery(null);
+				}
+
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		} catch (SQLException e) {
 			e.printStackTrace();
 		}
 	}
 	
+	public void updateUser(){
+		String sqlUpdate = "UPDATE USERS SET usernme = ?, passwrd = MD5(?), dateUpdate = NOW(),	codeVerification = MD5(?), emailRecovery = ? WHERE idUser = ?";
+		try (Connection conn = getConnection();
+				PreparedStatement stm = conn.prepareStatement(sqlUpdate);){
+			stm.setString(1, getUsername());
+			stm.setString(2, getPassword());
+			stm.setString(3, (Integer.toString(getEmailRecovery().hashCode() + getUsername().hashCode())));
+			stm.setString(4, getEmailRecovery());
+			stm.setInt(5, getIdUser());
+			stm.execute();
+		}catch(SQLException e){
+			e.printStackTrace();
+		}
+		
+	}
 	
-	
-	
+	public  void deletUser(){
+		String sqlDelete = "DELETE FROM USERS WHERE idUser = ?";
+		try (Connection conn = getConnection();
+					PreparedStatement stm = conn.prepareStatement(sqlDelete);){
+			stm.setInt(1, getIdUser());
+			stm.execute();			
+		}catch(SQLException e){
+			e.printStackTrace();
+		}
+	}
+
 }
